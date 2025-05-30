@@ -120,7 +120,7 @@ public:
     Vehicle(int quantity, int weight, const Position pos, VehicleType vehicleType);
     int getAttackScore() const override;
     string str() const override;
-    bool isVehicle() override { return true; }
+    bool isVehicle() override ; 
     VehicleType getType() const;
 };
 
@@ -133,7 +133,7 @@ public:
     Infantry(int quantity, int weight, const Position pos, InfantryType infantryType);
     int getAttackScore() const override;
     string str() const override;
-    bool isVehicle() override { return false; }
+    bool isVehicle() override ; 
     InfantryType getType() const;
 };
 
@@ -162,7 +162,19 @@ public:
     int vehicles() const;
     int infantries() const;
     string str() const;
-    void clear();
+    void clear() {
+        unitNode* p = head;
+        while (p) {
+            unitNode* next = p->next;
+            // Only delete if you own the pointer (i.e., it was allocated with new)
+            // If you do not own, do not delete!
+            // delete p->data; // <-- REMOVE or comment this out if you do not own the data
+            delete p;
+            p = next;
+        }
+        head = tail = nullptr;
+        size = vehicleCount = infantryCount = 0;
+    }
     template<typename F>
     void forEach(F f) const
     {
