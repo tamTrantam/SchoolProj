@@ -6,7 +6,6 @@
  * Date: 02.02.2025
  */
 
-// The library here is concretely set, students are not allowed to include any other libraries.
 #ifndef _H_HCM_CAMPAIGN_H_
 #define _H_HCM_CAMPAIGN_H_
 
@@ -14,8 +13,6 @@
 
 ////////////////////////////////////////////////////////////////////////
 /// STUDENT'S ANSWER BEGINS HERE
-/// Complete the following functions
-/// DO NOT modify any parameters in the functions.
 ////////////////////////////////////////////////////////////////////////
 
 // Forward declaration
@@ -27,9 +24,40 @@ class TerrainElement;
 class BattleField;
 class UnitList;
 class Army;
-
 class LiberationArmy;
 class ARVN;
+
+constexpr double vp = 0.10; // Vehicle penalty multiplier for Mountain
+constexpr double mb = 0.30; // Infantry bonus multiplier for Mountain
+
+// Helper functions for special number, perfect square, and digit sum
+inline int numCharSum(int num) {
+    int sum = 0;
+    while (num > 9) {
+        sum = 0;
+        while (num) { sum += num % 10; num /= 10; }
+        num = sum;
+    }
+    return num;
+}
+inline bool isPerfectSquare(int number) {
+    if (number < 0) return false;
+    int root = static_cast<int>(sqrt(number) + 0.5);
+    return root * root == number;
+}
+inline bool isSpecial(int S) {
+    const int primes[3] = { 3,5,7 };
+    for (int k : primes) {
+        int n = S;
+        bool ok = true;
+        while (n) {
+            if (n % k > 1) { ok = false; break; }
+            n /= k;
+        }
+        if (ok) return true;
+    }
+    return false;
+}
 
 enum VehicleType
 {
@@ -51,41 +79,95 @@ enum InfantryType
     REGULARINFANTRY
 };
 
+class Position
+{
+private:
+    int r, c;
+public:
+    Position(int r = 0, int c = 0);
+    Position(const string &str_pos);
+    int getRow() const;
+    int getCol() const;
+    void setRow(int r);
+    void setCol(int c);
+    string str() const;
+    double dist(const Position& p) const;
+};
+
+class Unit
+{
+protected:
+    int quantity, weight;
+    Position pos;
+public:
+    Unit(int quantity, int weight, Position pos);
+    virtual ~Unit() {}
+    virtual int getAttackScore() const = 0;
+    virtual bool isVehicle() = 0;
+    Position getCurrentPosition() const;
+    virtual string str() const = 0;
+    int getQuantity() const;
+    void scaleQuantity(double factor);
+    void scaleWeight(double factor);
+    void setWeight(int w);
+};
+
+class Vehicle : public Unit
+{
+private:
+    VehicleType vehicleType;
+public:
+    Vehicle(int quantity, int weight, const Position pos, VehicleType vehicleType);
+    int getAttackScore() const override;
+    string str() const override;
+    bool isVehicle() override { return true; }
+    VehicleType getType() const;
+};
+
+class Infantry : public Unit
+{
+private:
+    void applyRule();
+    InfantryType infantryType;
+public:
+    Infantry(int quantity, int weight, const Position pos, InfantryType infantryType);
+    int getAttackScore() const override;
+    string str() const override;
+    bool isVehicle() override { return false; }
+    InfantryType getType() const;
+};
+
 class UnitList
 {
 private:
     int capacity;
-    // TODO
     struct unitNode {
         Unit* data;
         unitNode* next;
-        unitNode(Unit* u, unitNode* n = nullptr) : data(u), next(n) {} //method to instantiate a node
+        unitNode(Unit* u, unitNode* n = nullptr) : data(u), next(n) {}
     };
-    unitNode* head; //head node
-    unitNode* tail; //last node
-    int vehicleCount = 0, infantryCount = 0;
-    int   size;
-
+    unitNode* head;
+    unitNode* tail;
+    int vehicleCount, infantryCount;
+    int size;
 public:
     UnitList(int capacity);
-	~UnitList();
-    bool insert(Unit* unit);   // return true if insert successfully
-    bool remove(const std::vector<Unit*>& vec);   // return true if remove successfully
+    ~UnitList();
+    bool insert(Unit* unit);
+    bool remove(const std::vector<Unit*>& vec);
     vector<Unit*> extractAll();
     bool quantityUpdate(Unit* unit);
-    bool isContain(VehicleType vehicleType);   // return true if it exists
-    bool isContain(InfantryType infantryType); // return true if it exists
-    int vehicles()   const;
+    bool isContain(VehicleType vehicleType);
+    bool isContain(InfantryType infantryType);
+    int vehicles() const;
     int infantries() const;
     string str() const;
-	void clear(); // clear the list
-    /*---------------- traversal helpers -------------------------------*/
+    void clear();
     template<typename F>
     void forEach(F f) const
     {
         for (unitNode* p = head; p; p = p->next) f(p->data);
-    } //apply function or lambda f to data (Unit)
-
+    }
     template<typename P>
     vector<Unit*> subset(P pred) const
     {
@@ -98,258 +180,151 @@ public:
 class Army
 {
 protected:
-    int LF=0, EXP=0;
+    int LF, EXP;
     string name;
     UnitList* unitList;
     BattleField* battleField;
-
 public:
-    Army(Unit** unitArray, int size, string name, BattleField *battleField);
-    virtual void fight(Army* , bool ) = 0;
+    Army(Unit** unitArray, int size, string name, BattleField* battleField);
+    virtual ~Army();
+    virtual void fight(Army*, bool) = 0;
     virtual string str() const = 0;
-	string getName() const;
+    string getName() const;
     int getLF() const;
     int getEXP() const;
     void setLF(int x);
     void setEXP(int x);
     UnitList* getUnitList() const;
     void update();
-    virtual ~Army();
 };
-
-
-class Position
-{
-private:
-    int r, c;
-public:
-    Position(int r = 0, int c = 0);
-    Position(const string &str_pos); // Example: str_pos = "(1,15)"
-    int getRow() const;
-    int getCol() const;
-    void setRow(int r);
-    void setCol(int c);
-    string str() const; // Example: returns "(1,15)"
-    double dist(const Position& p) const;
-};
-
-
-
-class Unit
-{
-protected:
-    int quantity, weight;
-    Position pos;
-
-public:
-    Unit(int quantity, int weight, Position pos);
-    virtual ~Unit() {};
-    virtual int getAttackScore() const = 0;
-    virtual bool isVehicle() = 0;
-    Position getCurrentPosition() const;
-    virtual string str() const = 0;
-    int getQuantity() const;
-    void scaleQuantity(double factor);
-    void scaleWeight(double factor); // change parameter by multiply by factor ( disregard addition or subtraction condition)
-};
-
-
-
-
-class Vehicle:public Unit
-{
-private:
-    VehicleType vehicleType;
-public:
-    Vehicle(int quantity, int weight, const Position pos, VehicleType vehicleType);
-    int getAttackScore()const;
-    string str() const;
-    bool isVehicle() { return true; };
-    VehicleType getType() const;
-};
-
-class Infantry :public Unit 
-{
-private: 
-    void applyRule();
-    InfantryType infantryType;
-public:
-    Infantry(int quantity, int weight, const Position pos, InfantryType infantryType);
-    int getAttackScore() const;
-    string str() const;
-    bool isVehicle() { return false; };
-    InfantryType getType() const;
-};
-
-
-
 
 class LiberationArmy : public Army
 {
 public:
-    LiberationArmy(Unit **unitArray=nullptr, int size=0,string name ="LiberationArmy", BattleField* battleField=nullptr);
+    LiberationArmy(Unit **unitArray = nullptr, int size = 0, string name = "LiberationArmy", BattleField* battleField = nullptr);
     void fight(Army *enemy, bool defense = false) override;
-	string str() const override;
-private:
-	void construct(Unit** unitArray, int size);
-	static pair<int, vector<Unit*>> calculateAttackScore(Army* enemy, bool defense);
+    string str() const override;
 };
+
 class ARVN : public Army
 {
 public:
     ARVN(Unit** unitArray = nullptr, int size = 0, string name = "ARVN", BattleField* battleField = nullptr);
-    void fight(Army* enemy, bool defense = false);
-    string str() const;
-private:
-	void construct(Unit** unitArray, int size);
-
+    void fight(Army* enemy, bool defense = false) override;
+    string str() const override;
 };
 
 class TerrainElement
 {
 public:
-    TerrainElement() {};
-    ~TerrainElement() {};
-    virtual void getEffect(Army *army) = 0;
+    TerrainElement() {}
+    virtual ~TerrainElement() {}
+    virtual void getEffect(class Army *army) = 0;
 };
-class Mountain :public TerrainElement { private:Position pos; public:Mountain(const Position& pos); void getEffect(Army*) override; };
-class River :public TerrainElement { private:Position pos; public:River(const Position& pos); void getEffect(Army*) override; };
-class Urban :public TerrainElement { private:Position pos; public:Urban(const Position& pos); void getEffect(Army*)override; };
-class Fortification :public TerrainElement { private:Position pos; public:Fortification(const Position& pos); void getEffect(Army*) override; };
-class SpecialZone :public TerrainElement { private:Position pos; public:SpecialZone(const Position& pos); void getEffect(Army*) override; };
-class Road :public TerrainElement { private:Position pos; public:Road(const Position& pos); void getEffect(Army*) override; };
 
-class terrain 
-{
-
-
-    public:
-    TerrainElement* element;
+class Mountain : public TerrainElement {
+private:
     Position pos;
-    terrain(TerrainElement* element, const Position& pos) : element(element), pos(pos) {}
-    ~terrain() { delete element; }
-    void apply(Army* army) { element->getEffect(army); }
-	string str() const { return pos.str(); } // Example: returns "(1,15)"
+public:
+    Mountain(const Position& pos);
+    void getEffect(Army* army) override;
 };
-class BattleField
-{
+class River : public TerrainElement {
+private:
+    Position pos;
+public:
+    River(const Position& pos);
+    void getEffect(Army* army) override;
+};
+class Urban : public TerrainElement {
+private:
+    Position pos;
+public:
+    Urban(const Position& pos);
+    void getEffect(Army* army) override;
+};
+class Fortification : public TerrainElement {
+private:
+    Position pos;
+public:
+    Fortification(const Position& pos);
+    void getEffect(Army* army) override;
+};
+class SpecialZone : public TerrainElement {
+private:
+    Position pos;
+public:
+    SpecialZone(const Position& pos);
+    void getEffect(Army* army) override;
+};
+class Road : public TerrainElement {
+private:
+    Position pos;
+public:
+    Road(const Position& pos);
+    void getEffect(Army* army) override;
+};
+
+// Configuration class
+class Configuration {
 private:
     int n_rows, n_cols;
-	vector<TerrainElement*> terrainArray; // Array of terrain elements
+    vector<Position*> arrayForest, arrayRiver, arrayFortification, arrayUrban, arraySpecialZone;
+    vector<Unit*> liberationArmyUnits, arvnUnits;
+    int eventCode;
+    void parseFile(const string& config_file_path);
+    void parsePositions(const string& str, vector<Position*>& vec) const;
+    Unit* makeUnit(const string& Token) const;
+    string trim(string str) const;
+    string vecPosStr(const vector<Position*>& vec) const;
+    string vecUnitStr(const vector<Unit*>& vec) const;
 public:
-    BattleField(int n_rows, int n_cols, vector<Position*> arrayForest,
-        vector<Position*> arrayRiver, vector<Position*> arrayFortification,
-        vector<Position*> arrayUrban, vector<Position*> arraySpecialZone) ;
-    ~BattleField() ;
-    void apply(Army* army);
-        // Apply terrain effect based on the position
-};
-
-class Configuration
-{
-private:
-
-    int n_rows, n_cols;
-    vector<Position*> arrayForest;
-    vector<Position*> arrayRiver;
-    vector<Position*> arrayFortification;
-    vector<Position*> arrayUrban;
-	vector<Position*> arraySpecialZone;
-	vector<Unit*> liberationArmyUnits;
-    vector<Unit*> arvnUnits;
-	int eventCode;// in range [0,99], if eventCode > 99, then last 2 digits are used
-	void parseFile(const string& config_file_path);
-	string trim(string str) const ; // Helper function to trim whitespace from a string
-	string vecPosStr(const vector<Position*>& vec) const; // Helper function to convert vector of Position to string
-	string vecUnitStr(const vector<Unit*>& vec) const; // Helper function to convert vector of Unit to string
-	void parsePositions(const string& str, vector<Position*>& vec) const; // Helper function to parse positions from a line
-	Unit* makeUnit(const string& Token) const; // Helper function to create a Unit from a string token
-
-public:
-	Configuration(const string& config_file_path);
-	~Configuration();
-    int getEventCode() const;
-	int getNumRows() const;
-	int getNumCols() const;
-	vector<Position*> getForestPositions() const;
+    Configuration(const string& config_file_path);
+    ~Configuration();
+    int getNumCols() const;
+    int getNumRows() const;
+    vector<Position*> getForestPositions() const;
     vector<Position*> getRiverPositions() const;
     vector<Position*> getFortificationPositions() const;
     vector<Position*> getUrbanPositions() const;
     vector<Position*> getSpecialZonePositions() const;
-	vector<Unit*> getLiberationArmyUnits() const;
-	vector<Unit*> getARVNUnits() const;
-	vector<Unit*> stealLiberation() const;
-	vector<Unit*> stealARVN() const;
-	string str() const;
-
+    vector<Unit*> getARVNUnits() const;
+    vector<Unit*> getLiberationArmyUnits() const;
+    int getEventCode() const;
+    vector<Unit*> stealLiberation() const;
+    vector<Unit*> stealARVN() const;
+    string str() const;
 };
 
-class HCMCampaign
-{
+// BattleField class
+class BattleField {
 private:
-    Configuration *config;
-    BattleField *battleField;
-    LiberationArmy *liberationArmy;
-    ARVN *arvnArmy;
+    int n_rows, n_cols;
+    vector<vector<TerrainElement*>> terrainMap;
 public:
-    HCMCampaign(const string &config_file_path);
-	~HCMCampaign();
+    BattleField(int n_rows, int n_cols,
+        const vector<Position*>& arrayForest,
+        const vector<Position*>& arrayRiver,
+        const vector<Position*>& arrayFortification,
+        const vector<Position*>& arrayUrban,
+        const vector<Position*>& arraySpecialZone);
+    ~BattleField();
+    void apply(Army* army);
+    string str() const;
+};
+
+// HCMCampaign class
+class HCMCampaign {
+private:
+    Configuration* config;
+    BattleField* battleField;
+    LiberationArmy* liberationArmy;
+    ARVN* arvnArmy;
+public:
+    HCMCampaign(const string& config_file_path);
+    ~HCMCampaign();
     void run();
     string printResult();
 };
 
-
-
-
-
-/*-------------------------------Sub-methods & Helpers--------------------------------*/
-
-inline int numCharSum(const int& num) //sum all character of an int till 1 digit left
-{
-    int sum = 0;
-    string number = to_string(num);
-    if (number.length() == 1)
-    {
-        return number[0] - '0';
-    }
-    else if (number.length() == 0)
-    {
-        return 0;
-    }
-    else
-    {
-        for (char c : number)
-        {
-            sum += c - '0';
-        }
-    }
-    return numCharSum(sum);
-}
-
-inline bool isPerfectSquare(int number) //check if int is a perfect square
-{
-    if (number < 0) return false;
-    int root = static_cast<int>(sqrt(number) + 0.5); //fix floating point number error
-    return root * root == number;
-
-}
-
-inline bool isSpecial(int S) //check for speciality
-{
-    const int primes[3] = { 3,5,7 };
-    for (int k : primes) {
-        int n = S;
-        bool ok = true;
-        while (n) {
-            if (n % k > 1) { ok = false; break; }
-            n /= k;
-        }
-        if (ok) return true;
-    }
-    return false;
-}
-
-
-/*-------------------------------Sub-methods & Helpers--------------------------------*/
-
-#endif
+#endif // _H_HCM_CAMPAIGN_H_
